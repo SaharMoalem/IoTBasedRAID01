@@ -47,7 +47,7 @@ cd framework/bin/
 g++ -std=c++23 -Wall -Wextra -g -fPIC -shared ../src/handleton.cpp -I ../include/ -o libhandleton.so
 ```
 
-Handleton on Raspberry Pi
+Handleton on Raspberry Pi:
 ```bash
 aarch64-linux-gnu-g++-12 -std=c++23 -pedantic-errors -Wall -Wextra -Werror -g -fPIC -shared ../src/handleton.cpp -I ../include -o librasphandleton.so
 ```
@@ -59,6 +59,12 @@ Each *minion* device must run its corresponding executable. To compile a minion,
 ```bash
 g++ -std=c++23 -Wall -Wextra -g ../test/TestFirstMinion.cpp ../src/Framework.cpp ../src/dir_monitor.cpp ../src/AsyncInjection.cpp ../src/dll_loader.cpp ../src/FW_TPTask.cpp ../src/reactor.cpp ../src/thread_pool.cpp ../src/listener.cpp ../src/scheduler.cpp ../src/logger.cpp  ../../concrete/src/AMessage.cpp ../../concrete/src/ATaskArgs.cpp ../../concrete/src/FileManager.cpp ../../concrete/src/MasterProxy.cpp ../../concrete/src/MessageReceive.cpp ../../concrete/src/MessageSend.cpp ../../concrete/src/MinionArgs.cpp ../../concrete/src/MinionCommands.cpp ../../concrete/src/UdpSocket.cpp ../../concrete/src/UID.cpp -I ../include/ -I ../../concrete/include/ -L. -Wl,-rpath=. -lhandleton -ldl -o minion1
 ```
+
+Minion on Raspberry Pi:
+```bash
+aarch64-linux-gnu-g++-12 -std=c++23 -pedantic-errors -Wall -Wextra -Werror -g ../test/TestFirstMinion.cpp ../src/Framework.cpp ../src/dir_monitor.cpp ../src/AsyncInjection.cpp ../src/dll_loader.cpp ../src/FW_TPTask.cpp ../src/reactor.cpp ../src/thread_pool.cpp ../src/listener.cpp ../src/scheduler.cpp ../src/logger.cpp ../../concrete/src/AMessage.cpp ../../concrete/src/ATaskArgs.cpp ../../concrete/src/FileManager.cpp ../../concrete/src/MasterProxy.cpp ../../concrete/src/MessageReceive.cpp ../../concrete/src/MessageSend.cpp ../../concrete/src/MinionArgs.cpp ../../concrete/src/MinionCommands.cpp ../../concrete/src/UdpSocket.cpp ../../concrete/src/UID.cpp -I ../include/ -I ../../concrete/include/ -L. -Wl,-rpath=. -lrasphandleton -ldl -o rasp_minion.out
+```
+
 > Each minion has a corresponding test file, simply command again with ../test/TestSecondMinion.cpp, -o minion2 and so on.
 
 ### 👑 Master Side
