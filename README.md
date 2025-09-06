@@ -42,6 +42,16 @@ cd framework/bin/
 
 ---
 
+### 🔧 Handleton Shared Object
+```bash
+g++ -std=c++23 -Wall -Wextra -g -fPIC -shared ../src/handleton.cpp -I ../include/ -o libhandleton.so
+```
+
+Handleton on Raspberry Pi
+```bash
+aarch64-linux-gnu-g++-12 -std=c++23 -pedantic-errors -Wall -Wextra -Werror -g -fPIC -shared ../src/handleton.cpp -I ../include -o librasphandleton.so
+```
+
 ### 🔧 Minion Side
 
 Each *minion* device must run its corresponding executable. To compile a minion, run the following:
