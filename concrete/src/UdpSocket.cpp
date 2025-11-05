@@ -1,9 +1,3 @@
-/******************************************************************************
- * File Name: UDPSocket
- * Owner: Sahar Moalem                                                             
- * Reviewer: Itai
- * Review status: Approved
- ******************************************************************************/ 
 #include <iostream> // string, runtime_error
 #include <netdb.h> // addrinfo, AI_PASSIVE, getaddrinfo, freeaddrinfo
 #include <cstring> // memset
