@@ -1,9 +1,3 @@
-/******************************************************************************
- * File Name: TCPClientSocket
- * Owner: Sahar Moalem                                                             
- * Reviewer: Itai
- * Review status: Approved
- ******************************************************************************/ 
 #include <cstring>      //memset
 #include <netdb.h>      //addrinfo, AI_PASSIVE, getaddrinfo, freeaddrinfo
 #include <unistd.h>     //close
