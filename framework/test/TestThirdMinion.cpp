@@ -22,7 +22,8 @@ void TestFramework()
 
     proxy->Init("9092");
 
-    ilrd::Handleton::GetInstance<ilrd::FileManager>()->Init("./Minion3.dat");
+    const size_t chunkSize = 4 * 1024 * 1024;
+    ilrd::Handleton::GetInstance<ilrd::FileManager>()->Init("./Minion3.dat", chunkSize);
 
     ilrd::Framework::Fd_Callbacks fd_callbacks;
     fd_callbacks.push_back(std::make_tuple(proxy->GetSocketFD(), ilrd::IListener::READ,

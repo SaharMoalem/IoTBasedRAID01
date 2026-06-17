@@ -21,6 +21,7 @@ public:
     void AddReadTask(const UID& uid, size_t offset, size_t length);
     void AddWriteTask(const UID& uid, size_t offset, size_t length, const std::shared_ptr<char[]>& buffer);
     void RegisterForNewTickets(ACallback<std::pair<std::shared_ptr<Ticket>, UID>>& callback);
+    size_t GetDriveSize() const;
 
 private:
     friend class Handleton;

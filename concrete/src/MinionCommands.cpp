@@ -3,42 +3,59 @@
 #include "handleton.hpp"
 #include "FileManager.hpp"
 #include "MasterProxy.hpp"
+#include "logger.hpp"
 
 using namespace ilrd;
 
 std::optional<std::pair<ilrd::AsyncFunc, std::chrono::milliseconds>> MinionReadCommand::Run(std::shared_ptr<ilrd::ITaskArgs> args)
 {
+    MinionReadArgs* readArgs = dynamic_cast<MinionReadArgs*>(args.get());
+    if(!readArgs)
+    {
+        Handleton::GetInstance<Logger>()->Log(
+            "MinionReadCommand: invalid task args", Logger::ERROR);
+        return std::nullopt;
+    }
+
     try
     {
-        MinionReadArgs* readArgs = dynamic_cast<MinionReadArgs*>(args.get());
         std::shared_ptr<char[]> readBuffer(new char[readArgs->GetLength()]);
-        bool result = Handleton::GetInstance<FileManager>()->ReadFromFile(readArgs->GetOffset(),
-                                            readArgs->GetLength(), readBuffer);
+        const bool result = Handleton::GetInstance<FileManager>()->ReadFromFile(
+            readArgs->GetOffset(), readArgs->GetLength(), readBuffer);
         Handleton::GetInstance<MasterProxy>()->SendReadResponse(readArgs->GetUID(),
-                                    result, readArgs->GetLength(), readBuffer);
+            result, readArgs->GetLength(), readBuffer);
     }
-    catch(...)
+    catch(const std::exception& e)
     {
-
+        Handleton::GetInstance<Logger>()->Log(
+            std::string("MinionReadCommand: ") + e.what(), Logger::ERROR);
     }
-    
-    return std::make_pair([](){ return true;/*?*/ }, std::chrono::milliseconds(100));
+
+    return std::nullopt;
 }
 
 std::optional<std::pair<ilrd::AsyncFunc, std::chrono::milliseconds>> MinionWriteCommand::Run(std::shared_ptr<ilrd::ITaskArgs> args)
 {
+    MinionWriteArgs* writeArgs = dynamic_cast<MinionWriteArgs*>(args.get());
+    if(!writeArgs)
+    {
+        Handleton::GetInstance<Logger>()->Log(
+            "MinionWriteCommand: invalid task args", Logger::ERROR);
+        return std::nullopt;
+    }
+
     try
     {
-        MinionWriteArgs* writeArgs = dynamic_cast<MinionWriteArgs*>(args.get());
-        bool result = Handleton::GetInstance<FileManager>()->WriteToFile(writeArgs->GetOffset(),
-                                writeArgs->GetLength(), writeArgs->GetBuffer());
-        Handleton::GetInstance<MasterProxy>()->SendWriteResponse(writeArgs->GetUID(),
-                                                                        result);
+        const bool result = Handleton::GetInstance<FileManager>()->WriteToFile(
+            writeArgs->GetOffset(), writeArgs->GetLength(), writeArgs->GetBuffer());
+        Handleton::GetInstance<MasterProxy>()->SendWriteResponse(
+            writeArgs->GetUID(), result);
     }
-    catch(...)
+    catch(const std::exception& e)
     {
-
+        Handleton::GetInstance<Logger>()->Log(
+            std::string("MinionWriteCommand: ") + e.what(), Logger::ERROR);
     }
-    
-    return std::make_pair([](){ return true;/*?*/ }, std::chrono::milliseconds(100));
+
+    return std::nullopt;
 }

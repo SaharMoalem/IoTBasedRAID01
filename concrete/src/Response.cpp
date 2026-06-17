@@ -1,15 +1,15 @@
-#include <iostream>
-
 #include "Response.hpp"
+#include "handleton.hpp"
+#include "logger.hpp"
 
 using namespace ilrd;
 
 void Response::OnSuccess()
 {
-    std::cout << "Task Success!\n";
+    Handleton::GetInstance<Logger>()->Log("Task succeeded", Logger::DEBUG);
 }
 
 void Response::OnFailure()
 {
-    std::cout << "Task Failed\n";
+    Handleton::GetInstance<Logger>()->Log("Task failed", Logger::WARNING);
 }

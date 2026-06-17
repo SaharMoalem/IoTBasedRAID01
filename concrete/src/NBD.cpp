@@ -33,8 +33,6 @@ int NBD::FDWrapper::GetFD() const
 
 int NBD::s_nbdDevToDisconnect = -1;
 
-const uint64_t NBD::s_driveSize = 1024 * 1024 * 4 * 3;
-
 #ifdef WORDS_BIGENDIAN
 uint64_t NBD::Ntohll(uint64_t num)
 {
@@ -52,7 +50,8 @@ uint64_t NBD::Ntohll(uint64_t num)
 }
 #endif
 
-NBD::NBD(const char* device): m_device(open(device, O_RDWR))
+NBD::NBD(const char* device, uint64_t driveSize):
+    m_device(open(device, O_RDWR)), m_driveSize(driveSize)
 {
     SocketsInit();
     pid_t pid = fork();
@@ -132,7 +131,7 @@ void NBD::SocketsInit()
     m_serverSocket.emplace(sockets[0]);
     m_clientSocket.emplace(sockets[1]);
 
-    if(ioctl(m_device.GetFD(), NBD_SET_SIZE, s_driveSize) == -1)
+    if(ioctl(m_device.GetFD(), NBD_SET_SIZE, m_driveSize) == -1)
     {
         throw std::runtime_error("ioctl NBD_SET_SIZE failed");
     }

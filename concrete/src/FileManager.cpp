@@ -1,11 +1,31 @@
+#include <fstream>
+#include <stdexcept>
+
 #include "FileManager.hpp"
 #include "MasterProxy.hpp"
 
 using namespace ilrd;
 
-void FileManager::Init(const std::string& file)
+void FileManager::Init(const std::string& file, size_t size)
 {
-    m_stream.open(file, std::ios::out | std::ios::in);
+    {
+        std::ofstream create(file, std::ios::binary);
+        if(!create)
+        {
+            throw std::runtime_error("FileManager: failed to create file");
+        }
+    }
+
+    m_stream.open(file, std::ios::out | std::ios::in | std::ios::binary);
+    if(!m_stream)
+    {
+        throw std::runtime_error("FileManager: failed to open file");
+    }
+
+    m_stream.seekp(static_cast<std::streamoff>(size - 1));
+    m_stream.put('\0');
+    m_stream.flush();
+    m_stream.seekg(0);
 }
 
 bool FileManager::ReadFromFile(size_t offset, size_t length,

@@ -13,7 +13,7 @@ class FileManager: public IFileManager
 public:
     ~FileManager() = default;
     
-    void Init(const std::string& file);
+    void Init(const std::string& file, size_t size);
     bool ReadFromFile(size_t offset, size_t length, const std::shared_ptr<char[]>& buffer) override;
     bool WriteToFile(size_t offset, size_t length, const std::shared_ptr<char[]>& buffer) override;
 

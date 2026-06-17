@@ -1,6 +1,7 @@
 #ifndef ILRD_RD1645_NBD_HPP
 #define ILRD_RD1645_NBD_HPP
 
+#include <cstdint>
 #include <optional>
 
 #include "TcpClientSocket.hpp"
@@ -10,7 +11,7 @@ namespace ilrd
 class NBD
 {
 public:
-    explicit NBD(const char* device);
+    explicit NBD(const char* device, uint64_t driveSize);
     ~NBD();
 
     TCPClient& GetTCPSocket();
@@ -36,8 +37,8 @@ private:
     FDWrapper m_device;
     std::optional<FDWrapper> m_clientSocket;
     std::optional<TCPClient> m_serverSocket;
+    uint64_t m_driveSize;
     static int s_nbdDevToDisconnect;
-    static const uint64_t s_driveSize;
 };
 }
 

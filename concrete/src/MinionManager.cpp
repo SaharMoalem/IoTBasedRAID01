@@ -1,7 +1,9 @@
 #include <algorithm>
+#include <cstring>
 #include <stdexcept>
 
 #include "MinionManager.hpp"
+#include "StripeSplitter.hpp"
 #include "Ticket.hpp"
 #include "factory.hpp"
 #include "MessageReceive.hpp"
@@ -65,23 +67,37 @@ void MinionManager::Init(size_t mbMinion,
         }); 
 }
 
+size_t MinionManager::GetDriveSize() const
+{
+    return m_driveSize;
+}
+
 void MinionManager::AddReadTask(const UID& uid, size_t offset, size_t length)
 {
     ValidateRange(offset, length);
 
-    std::shared_ptr<Ticket> ticket = std::make_shared<Ticket>(uid);
-    m_dispatcher.Notify(std::make_pair(ticket, uid));
-    
-    m_minions[offset / m_MBMinion]->AddReadTask(uid, offset % m_MBMinion,
-        length, [ticket](const std::shared_ptr<AMessage>& msg) {
-            ticket->CheckTicketDone(msg);
-        });
+    const std::vector<StripeSegment> segments = StripeSplitter::Split(
+        offset, length, m_MBMinion, m_minions.size());
 
-    m_minions[(offset / m_MBMinion + 1) % m_minions.size()]->AddReadTask(uid,
-        offset % m_MBMinion + m_MBMinion, length,
-        [ticket](const std::shared_ptr<AMessage>& msg) {
-            ticket->CheckTicketDone(msg);
-        }); // backup
+    std::shared_ptr<Ticket> ticket = std::make_shared<Ticket>(
+        uid, TicketOp::READ, length, segments);
+    m_dispatcher.Notify(std::make_pair(ticket, uid));
+
+    for(size_t i = 0; i < segments.size(); ++i)
+    {
+        const StripeSegment& seg = segments[i];
+        const size_t segIdx = i;
+
+        m_minions[seg.primaryMinionIndex]->AddReadTask(uid, seg.localOffset,
+            seg.length, [ticket, segIdx](const std::shared_ptr<AMessage>& msg) {
+                ticket->OnMirrorResponse(segIdx, MirrorRole::PRIMARY, msg);
+            });
+
+        m_minions[seg.backupMinionIndex]->AddReadTask(uid, seg.localOffset,
+            seg.length, [ticket, segIdx](const std::shared_ptr<AMessage>& msg) {
+                ticket->OnMirrorResponse(segIdx, MirrorRole::BACKUP, msg);
+            });
+    }
 }
 
 void MinionManager::AddWriteTask(const UID& uid, size_t offset, size_t length,
@@ -89,19 +105,31 @@ void MinionManager::AddWriteTask(const UID& uid, size_t offset, size_t length,
 {
     ValidateRange(offset, length);
 
-    std::shared_ptr<Ticket> ticket(std::make_shared<Ticket>(uid));
+    const std::vector<StripeSegment> segments = StripeSplitter::Split(
+        offset, length, m_MBMinion, m_minions.size());
+
+    std::shared_ptr<Ticket> ticket = std::make_shared<Ticket>(
+        uid, TicketOp::WRITE, length, segments);
     m_dispatcher.Notify(std::make_pair(ticket, uid));
 
-    m_minions[offset / m_MBMinion]->AddWriteTask(uid, offset % m_MBMinion,
-        length, buffer, [ticket](const std::shared_ptr<AMessage>& msg) {
-            ticket->CheckTicketDone(msg);
-        });
+    for(size_t i = 0; i < segments.size(); ++i)
+    {
+        const StripeSegment& seg = segments[i];
+        const size_t segIdx = i;
 
-    m_minions[(offset / m_MBMinion + 1) % m_minions.size()]->AddWriteTask(uid,
-        offset % m_MBMinion + m_MBMinion, length, buffer,
-        [ticket](const std::shared_ptr<AMessage>& msg) {
-            ticket->CheckTicketDone(msg);
-        }); //backup
+        std::shared_ptr<char[]> slice(new char[seg.length]);
+        std::memcpy(slice.get(), buffer.get() + seg.bufferOffset, seg.length);
+
+        m_minions[seg.primaryMinionIndex]->AddWriteTask(uid, seg.localOffset,
+            seg.length, slice, [ticket, segIdx](const std::shared_ptr<AMessage>& msg) {
+                ticket->OnMirrorResponse(segIdx, MirrorRole::PRIMARY, msg);
+            });
+
+        m_minions[seg.backupMinionIndex]->AddWriteTask(uid, seg.localOffset,
+            seg.length, slice, [ticket, segIdx](const std::shared_ptr<AMessage>& msg) {
+                ticket->OnMirrorResponse(segIdx, MirrorRole::BACKUP, msg);
+            });
+    }
 }
 
 void MinionManager::RegisterForNewTickets(ACallback<std::pair<std::shared_ptr<Ticket>,

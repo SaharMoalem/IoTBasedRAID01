@@ -21,15 +21,18 @@ std::shared_ptr<ilrd::ICommand> CreateWriteCommand()
 
 void TestFramework()
 {
-    ilrd::NBD nbd("/dev/nbd4");
-    ilrd::NBDProxy nbd_proxy(nbd);
+    const size_t chunkSize = 4 * 1024 * 1024;
     std::vector<std::shared_ptr<ilrd::IMinionProxy>> minions;
     
     minions.push_back(std::make_shared<ilrd::MinionProxy>("10.1.0.228", "9090"));
     minions.push_back(std::make_shared<ilrd::MinionProxy>("127.0.0.1", "9091"));
     minions.push_back(std::make_shared<ilrd::MinionProxy>("127.0.0.1", "9092"));
 
-    ilrd::Handleton::GetInstance<ilrd::MinionManager>()->Init(4 * 1024 * 1024, minions);
+    ilrd::Handleton::GetInstance<ilrd::MinionManager>()->Init(chunkSize, minions);
+    const size_t driveSize = ilrd::Handleton::GetInstance<ilrd::MinionManager>()->GetDriveSize();
+
+    ilrd::NBD nbd("/dev/nbd4", driveSize);
+    ilrd::NBDProxy nbd_proxy(nbd);
     ilrd::Handleton::GetInstance<ilrd::ResponseManager>()->Init(nbd_proxy);
 
     ilrd::Framework::Fd_Callbacks fd_callbacks;
