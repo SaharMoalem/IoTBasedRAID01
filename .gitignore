@@ -6,8 +6,12 @@
 !*.cpp
 !*.h
 !*.hpp
+!CMakeLists.txt
+!*.cmake
 !Makefile
 !*.md
 !.gitignore
 !*.jpeg
 !*/
+#Build output
+build/

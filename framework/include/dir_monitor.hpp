@@ -21,8 +21,9 @@ public:
     void Run();
     void Stop();
 
-private:
     static bool IsSharedObject(const std::string& path);
+
+private:
     void MonitorRun();
     int GetNotifyFD();
     int GetWatchFD();

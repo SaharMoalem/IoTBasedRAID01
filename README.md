@@ -1,160 +1,168 @@
-=======
 # IoT Based Drive
 
 A Linux-based user-space program that provides a virtual drive, accessible via the native directory GUI. Although data appears to be stored locally, it is actually distributed across multiple IoT devices (referred to as *minions*) on the same local network.
 
 ---
 
-## 🚀 Motivation
+## Motivation
 
 This project is designed to leverage unused storage space on common household IoT devices — such as smart air conditioner controllers, smart plugs, Raspberry Pi devices, and more.
 
-- Data Accessible only within the Local Area Network (LAN)
-- Implement RAID 01, therefore the system ensures thata data is:
-  - **Secure**
-  - **Backed up**
+- Data accessible only within the Local Area Network (LAN)
+- Implements RAID 01 mirroring across minions for secure, backed-up storage
+
 ---
 
-## 📚 Introduction
+## Introduction
 
 IoT-Based Drive is a user-space application for Linux systems. It allows users to mount a virtual drive using the standard `mount` shell command.
 
 Data is transmitted via TCP from the kernel space to the user space using the Linux **Network Block Device (NBD)** module.
 
-> 🛠 This project was developed as the final assignment in the Infinity Labs R&D Software Development Program.
+> This project was developed as the final assignment in the Infinity Labs R&D Software Development Program.
 
 ---
 
-## ✅ Prerequisites
+## Prerequisites
 
-- Linux OS
+- Linux OS (CMake build and runtime)
+- CMake 3.20+
+- GCC 12+ with C++23 support
 - Root access (for loading kernel modules and mounting NBD)
 
 ---
 
-## ⚙️ Setup & Usage
+## Build (CMake)
+
+From the repository root:
 
 ```bash
-cd framework/bin/
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
+cmake --build build -j
+ctest --test-dir build
 ```
 
-> Compiled executables will be in the `bin/` directory.
+Artifacts are written to:
+
+| Output | Path |
+|--------|------|
+| Master | `build/bin/masterFramework` |
+| Minions | `build/bin/minion1`, `minion2`, `minion3` |
+| Handleton shared lib | `build/lib/libhandleton.so` |
+
+### Cross-compile for Raspberry Pi (optional)
+
+```bash
+cmake -S . -B build-rpi \
+  -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-aarch64.cmake \
+  -DCMAKE_BUILD_TYPE=Release
+cmake --build build-rpi -j
+```
+
+Requires `aarch64-linux-gnu-g++-12` on the build host.
 
 ---
 
-### 🔧 Handleton Shared Object
-```bash
-g++ -std=c++23 -Wall -Wextra -g -fPIC -shared ../src/handleton.cpp -I ../include/ -o libhandleton.so
-```
+## Run
 
-Handleton on Raspberry Pi:
-```bash
-aarch64-linux-gnu-g++-12 -std=c++23 -pedantic-errors -Wall -Wextra -Werror -g -fPIC -shared ../src/handleton.cpp -I ../include -o librasphandleton.so
-```
+### 1. Start minions
 
-### 🔧 Minion Side
-
-Each *minion* device must run its corresponding executable. To compile a minion, run the following:
+On each minion device (or locally on different ports for testing):
 
 ```bash
-g++ -std=c++23 -Wall -Wextra -g ../test/TestFirstMinion.cpp ../src/Framework.cpp ../src/dir_monitor.cpp ../src/AsyncInjection.cpp ../src/dll_loader.cpp ../src/FW_TPTask.cpp ../src/reactor.cpp ../src/thread_pool.cpp ../src/listener.cpp ../src/scheduler.cpp ../src/logger.cpp  ../../concrete/src/AMessage.cpp ../../concrete/src/ATaskArgs.cpp ../../concrete/src/FileManager.cpp ../../concrete/src/MasterProxy.cpp ../../concrete/src/MessageReceive.cpp ../../concrete/src/MessageSend.cpp ../../concrete/src/MinionArgs.cpp ../../concrete/src/MinionCommands.cpp ../../concrete/src/UdpSocket.cpp ../../concrete/src/UID.cpp -I ../include/ -I ../../concrete/include/ -L. -Wl,-rpath=. -lhandleton -ldl -o minion1
+./build/bin/minion1   # port 9090
+./build/bin/minion2   # port 9091
+./build/bin/minion3   # port 9092
 ```
 
-Minion on Raspberry Pi:
-```bash
-aarch64-linux-gnu-g++-12 -std=c++23 -pedantic-errors -Wall -Wextra -Werror -g ../test/TestFirstMinion.cpp ../src/Framework.cpp ../src/dir_monitor.cpp ../src/AsyncInjection.cpp ../src/dll_loader.cpp ../src/FW_TPTask.cpp ../src/reactor.cpp ../src/thread_pool.cpp ../src/listener.cpp ../src/scheduler.cpp ../src/logger.cpp ../../concrete/src/AMessage.cpp ../../concrete/src/ATaskArgs.cpp ../../concrete/src/FileManager.cpp ../../concrete/src/MasterProxy.cpp ../../concrete/src/MessageReceive.cpp ../../concrete/src/MessageSend.cpp ../../concrete/src/MinionArgs.cpp ../../concrete/src/MinionCommands.cpp ../../concrete/src/UdpSocket.cpp ../../concrete/src/UID.cpp -I ../include/ -I ../../concrete/include/ -L. -Wl,-rpath=. -lrasphandleton -ldl -o rasp_minion.out
-```
+Each minion creates a `MinionN.dat` file sized to the configured chunk (4 MiB by default).
 
-> Each minion has a corresponding test file, simply command again with ../test/TestSecondMinion.cpp, -o minion2 and so on.
+### 2. Configure master
 
-### 👑 Master Side
+Edit [`framework/test/TestFramework.cpp`](framework/test/TestFramework.cpp) and set the IP/port of each minion.
 
-1. Ensure all minions are up and running.
-2. Edit `TestFramework.cpp` to include the IP and port of each minion device.
-3. Compile the master -
+### 3. Start master
 
 ```bash
-g++ -std=c++23 -Wall -Wextra -g ../test/TestFramework.cpp ../src/Framework.cpp ../src/dir_monitor.cpp ../src/AsyncInjection.cpp ../src/dll_loader.cpp ../src/FW_TPTask.cpp ../src/reactor.cpp ../src/thread_pool.cpp ../src/listener.cpp ../src/scheduler.cpp ../src/logger.cpp ../../concrete/src/AMessage.cpp ../../concrete/src/ATaskArgs.cpp ../../concrete/src/Commands.cpp ../../concrete/src/MessageReceive.cpp ../../concrete/src/MessageSend.cpp ../../concrete/src/MinionManager.cpp ../../concrete/src/MinionProxy.cpp ../../concrete/src/NBDProxy.cpp ../../concrete/src/NBDReadArgs.cpp ../../concrete/src/NBDWriteArgs.cpp ../../concrete/src/Response.cpp ../../concrete/src/ResponseManager.cpp ../../concrete/src/Ticket.cpp ../../concrete/src/UdpSocket.cpp ../../concrete/src/TcpClientSocket.cpp ../../concrete/src/UID.cpp ../../concrete/src/NBD.cpp  -I ../include/ -I ../../concrete/include/  -L. -Wl,-rpath=. -lhandleton -ldl -o masterFramework
+sudo ./build/bin/masterFramework
 ```
 
----
+### 4. Mount the virtual drive
 
-#### 🔌 Mounting the Drive
-
-1. Load the NBD kernel module:
+In another terminal:
 
 ```bash
 sudo modprobe nbd
 echo 4 | sudo tee /sys/block/nbd*/queue/max_sectors_kb
+sudo mkfs.ext2 /dev/nbd4
+sudo mount /dev/nbd4 ~/iot_drive/mount/
 ```
 
-2. In a **second terminal**, run the master executable:
+> Default master uses `/dev/nbd4` in `TestFramework.cpp`. Adjust if needed.
+
+---
+
+## Tests
+
+Regression tests (no NBD hardware required):
 
 ```bash
-sudo ./masterFramework
+ctest --test-dir build --output-on-failure
 ```
 
-3. Back in the **first terminal**, format and mount the virtual drive:
+| Test | Validates |
+|------|-----------|
+| `stripe_splitter` | Chunk-boundary splitting and mirror index mapping |
+| `ticket_mirror` | RAID 01 read failover and write mirror policy |
+| `tcp_eof` | TCP disconnect does not spin forever |
+| `udp_receive` | UDP `ReceiveFrom` returns byte count |
+| `thread_pool_shutdown` | Thread pool destructor joins workers |
+| `dir_monitor_filter` | `.so` plugin filename filter |
 
-```bash
-sudo mkfs.ext2 /dev/nbd0
-sudo mount /dev/nbd0 ~/iot_drive/mount/
+---
+
+## Project layout
+
+```
+IoTBasedRAID01/
+├── CMakeLists.txt          # Root build
+├── cmake/                  # Toolchain files
+├── framework/              # Reactor, thread pool, scheduler, plugins
+│   ├── include/
+│   ├── src/
+│   └── test/               # Master/minion entry points + framework tests
+└── concrete/               # NBD, minions, RAID logic
+    ├── include/
+    ├── src/
+    └── test/               # Concrete unit tests
 ```
 
-> Your drive is now mounted. Any file operations inside `~/iot_drive/mount/` will be distributed across the minions.
+---
+
+## Main components
+
+### Framework (reusable core)
+
+- **Reactor** — monitors file descriptors and dispatches events
+- **ThreadPool** — worker threads with priority task queue
+- **Factory** — runtime object creation by key
+- **AsyncInjection** — periodic condition polling via scheduler
+- **Logger** — async file logging
+- **DirMonitor / DLLLoader** — hot-load `.so` plugins from a directory
+- **Handleton** — singleton manager (separate shared library)
+
+### Concrete (IoT drive)
+
+- **MinionManager** — stripes I/O across minions with RAID 01 mirroring
+- **Ticket** — tracks primary/backup minion responses per request
+- **NBD / NBDProxy** — kernel block device bridge
+- **MinionProxy / MasterProxy** — UDP command channel
+- **FileManager** — per-minion backing file
 
 ---
 
-## 🧩 Main Components
+## Legacy manual build
 
-### 🧱 Framework (Reusable Core Modules)
-#### 🔁 Reactor
-Monitors file descriptors and triggers events when ready to read.
-
-#### 🧵 ThreadPool
-Handles multithreading via a waitable task queue and worker threads.
-#### 🏭 Factory
-Dynamically generates objects on-command, mainly being used in this project for creating read/write commands.
-#### ⏳ Async Injection
-Repeatedly checks a condition and self-destructs if met.
-#### 📝 Logger
-Writes system events and errors to a log file.
-
-#### 📁 DirMonitor
-Watches a directory for new Dynamic Linked Libraries (DLLs).
-
-#### 🧬 DLLLoader
-Loads DLLs at runtime using `dlopen()`.
-
-#### 🧩 Handleton
-A Singleton-like object manager with heap allocation for runtime flexibility.
-
-##### Interfaces
-
-- `IInputProxy` — declares `GetTaskArgs()`
-- `ITaskArgs` — declares `GetKey()`
-- `ICommand` — declares `Run()`
+Manual `g++` one-liners previously lived in `framework/bin/`. **CMake is the supported build path** going forward.
 
 ---
-
-### 🔌 Concrete Components (IoT-Drive-Specific)
-#### 📦 Minion Manager
-Distributes read/write commands to minions and manages data sharding.
-
-#### 🔁 Minion Proxy & Master Proxy
-Facilitate communication between master and minions.
-
-#### 🎫 Ticket
-Tracks execution status of commands and routes results.
-
-#### 📬 Response Manager
-Handles responses and initiates appropriate follow-up actions.
-
-#### 🔗 NBD
-Handles Linux NBD communication between kernel and user space.
-
-#### 📂 FileManager
-Handles physical read/write operations on the minion devices.
-
----
-
