@@ -40,14 +40,17 @@ Scheduler::Scheduler(): m_counter(0), m_its()
 
 Scheduler::~Scheduler()
 {
-    try
+    itimerspec disarm{};
+    timer_settime(m_timer, 0, &disarm, nullptr);
+    timer_delete(m_timer);
+
+    std::unique_lock lock(m_mtx);
+    while(!m_queue.empty())
     {
-        std::unique_lock lock(m_mtx);
-        m_cv.wait(lock, [this] { return m_counter == 0;});
+        m_queue.pop();
     }
-    catch(...)
-    {
-    }   
+    m_counter = 0;
+    m_cv.notify_all();
 }
 
 void Scheduler::AddTask(const std::shared_ptr<ISchedulerTask>& task,
@@ -63,8 +66,10 @@ void Scheduler::StartTimer()
 {
     Task curr_task = m_queue.top();
     m_its.it_value.tv_sec = std::chrono::system_clock::to_time_t(curr_task.GetTime());
-    m_its.it_value.tv_nsec = (curr_task.GetTime() -
-        std::chrono::system_clock::from_time_t(m_its.it_value.tv_sec)).count();
+    const auto remainder = curr_task.GetTime() -
+        std::chrono::system_clock::from_time_t(m_its.it_value.tv_sec);
+    m_its.it_value.tv_nsec = std::chrono::duration_cast<std::chrono::nanoseconds>(
+        remainder).count();
 
     if(timer_settime(m_timer, TIMER_ABSTIME, &m_its, nullptr) !=  0)
     {
@@ -84,20 +89,31 @@ void Scheduler::RunTask()
 
     {
         std::unique_lock lock(m_mtx);
+        if(m_queue.empty())
+        {
+            return;
+        }
+
         curr_task = m_queue.top();
         m_queue.pop();
     }
 
-    curr_task.Run();
+    try
+    {
+        curr_task.Run();
+    }
+    catch(...)
+    {
+    }
+
     std::unique_lock lock(m_mtx);
 
     if(--m_counter == 0)
     {
         m_cv.notify_one();
     }
-
-    else
+    else if(!m_queue.empty())
     {
         StartTimer();
-    } 
+    }
 }

@@ -12,6 +12,7 @@ namespace ilrd
 class ICommand
 {
 public:
+    virtual ~ICommand() = default;
     virtual std::optional<std::pair<AsyncFunc, std::chrono::milliseconds>> Run(std::shared_ptr<ITaskArgs> args) = 0;
 };
 }

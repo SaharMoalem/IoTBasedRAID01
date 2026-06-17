@@ -3,6 +3,7 @@
 
 #include <functional>
 #include <chrono>
+#include <memory>
 
 #include "Ischedulertask.hpp"
 
@@ -10,23 +11,24 @@ namespace ilrd
 {
 using AsyncFunc = std::function<bool()>;
 
-class AsyncInjection
+class AsyncInjection : public std::enable_shared_from_this<AsyncInjection>
 {
 public:
-    AsyncInjection(AsyncFunc task, std::chrono::milliseconds interval);
+    static void Schedule(AsyncFunc task, std::chrono::milliseconds interval);
 
 private:
-    ~AsyncInjection() = default;
+    AsyncInjection(AsyncFunc task, std::chrono::milliseconds interval);
     void PerformAction();
+    void Reschedule();
 
     class AsyncInjectionTask: public ISchedulerTask
     {
     public:
-        AsyncInjectionTask(AsyncInjection& async);
+        explicit AsyncInjectionTask(const std::shared_ptr<AsyncInjection>& async);
         void Run() override;
 
     private:
-        AsyncInjection& m_async;
+        std::weak_ptr<AsyncInjection> m_async;
     };
 
     AsyncFunc m_task;

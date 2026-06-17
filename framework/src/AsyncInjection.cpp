@@ -1,31 +1,44 @@
 #include "AsyncInjection.hpp"
 #include "scheduler.hpp"
+#include "handleton.hpp"
 
 using namespace ilrd;
 
-AsyncInjection::AsyncInjectionTask::AsyncInjectionTask(AsyncInjection& async):
-                                                            m_async(async) {}
+AsyncInjection::AsyncInjectionTask::AsyncInjectionTask(
+    const std::shared_ptr<AsyncInjection>& async): m_async(async) {}
 
 void AsyncInjection::AsyncInjectionTask::Run()
 {
-    m_async.PerformAction();
+    if(std::shared_ptr<AsyncInjection> injection = m_async.lock())
+    {
+        injection->PerformAction();
+    }
+}
+
+void AsyncInjection::Schedule(AsyncFunc task, std::chrono::milliseconds interval)
+{
+    std::shared_ptr<AsyncInjection> injection(
+        new AsyncInjection(std::move(task), interval));
+    Handleton::GetInstance<Scheduler>()->AddTask(
+        std::make_shared<AsyncInjectionTask>(injection), interval);
 }
 
 AsyncInjection::AsyncInjection(AsyncFunc task,
-    std::chrono::milliseconds interval): m_task(task), m_interval(interval)
-{
-    Handleton::GetInstance<Scheduler>()->AddTask(std::make_shared<AsyncInjectionTask>(*this), m_interval);
-}
+    std::chrono::milliseconds interval): m_task(std::move(task)),
+    m_interval(interval) {}
 
 void AsyncInjection::PerformAction()
 {
     if(m_task())
     {
-        delete this;
+        return;
     }
 
-    else
-    {
-        Handleton::GetInstance<Scheduler>()->AddTask(std::make_shared<AsyncInjectionTask>(*this), m_interval);
-    }
+    Reschedule();
+}
+
+void AsyncInjection::Reschedule()
+{
+    Handleton::GetInstance<Scheduler>()->AddTask(
+        std::make_shared<AsyncInjectionTask>(shared_from_this()), m_interval);
 }

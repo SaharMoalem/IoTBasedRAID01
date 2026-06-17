@@ -15,14 +15,22 @@ DLLLoader::~DLLLoader()
 
 void DLLLoader::Load(std::string file_name)
 {
-    dl_handler handler = dlopen(file_name.c_str(), RTLD_LAZY);
+    if(m_dll_map.find(file_name) != m_dll_map.end())
+    {
+        return;
+    }
+
+    dl_handler handler = dlopen(file_name.c_str(), RTLD_NOW | RTLD_GLOBAL);
 
     if(!handler)
     {
         throw std::runtime_error("Couldn't open plugin");
     }
 
-    m_dll_map.emplace(file_name, handler);
+    if(!m_dll_map.emplace(file_name, handler).second)
+    {
+        dlclose(handler);
+    }
 }
 
 void DLLLoader::Unload(std::string file_name)

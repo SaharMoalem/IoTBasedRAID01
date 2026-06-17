@@ -13,5 +13,5 @@ bool Task()
 int main()
 {
     std::function<bool()> func = Task;
-    new ilrd::AsyncInjection(func, std::chrono::milliseconds(1000));
+    ilrd::AsyncInjection::Schedule(func, std::chrono::milliseconds(1000));
 }

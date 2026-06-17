@@ -45,3 +45,14 @@ void Framework::Run()
     m_monitor.Run();
     m_reactor.Run();
 }
+
+void Framework::Stop()
+{
+    m_reactor.Stop();
+    m_monitor.Stop();
+}
+
+Framework::~Framework()
+{
+    Stop();
+}

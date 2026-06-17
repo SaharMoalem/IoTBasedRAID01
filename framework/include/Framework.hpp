@@ -18,14 +18,15 @@ public:
 
     Framework(const Fd_Callbacks& fd_callbacks, const Creators& creators,
                             const std::string& plugins_dir_path = "plugins/");
-    ~Framework() = default;
+    ~Framework();
     Framework(const Framework& other) = delete;
     Framework& operator=(const Framework& other) = delete;
 
     void Run();
+    void Stop();
 
 private:
-    const Fd_Callbacks& m_fd_callbacks;
+    Fd_Callbacks m_fd_callbacks;
     DirMonitor m_monitor;
     Reactor m_reactor;
     DLLLoader m_loader;

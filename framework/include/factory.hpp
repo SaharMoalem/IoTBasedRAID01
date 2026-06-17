@@ -4,6 +4,7 @@
 #include <functional>       // function
 #include <unordered_map>    // unordered_map
 #include <memory>           // unique_ptr
+#include <mutex>
 
 namespace ilrd
 {
@@ -18,17 +19,20 @@ public:
 
 private:
     std::unordered_map<KEY, std::function<std::shared_ptr<BASE>(ARGS...)>> m_umap;
+    mutable std::mutex m_mtx;
 };
 
 template<typename KEY, typename BASE, typename ...ARGS>
 void Factory<KEY, BASE, ARGS...>::Register(KEY key, std::function<std::shared_ptr<BASE>(ARGS...)> creator)
 {
+    std::lock_guard<std::mutex> lock(m_mtx);
     m_umap[key] = creator;
 }
 
 template<typename KEY, typename BASE, typename ...ARGS>
 std::shared_ptr<BASE> Factory<KEY, BASE, ARGS...>::Create(KEY key, ARGS... args)
 {
+    std::lock_guard<std::mutex> lock(m_mtx);
     auto it = m_umap.find(key);
 
     if(it == m_umap.end())

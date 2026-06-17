@@ -18,8 +18,8 @@ void FW_TPTask::Run()
         std::optional<std::pair<AsyncFunc, std::chrono::milliseconds>> async = pCommand->Run(m_pTaskArg);
 
         if(async)
-        {   
-            new AsyncInjection(async.value().first, async.value().second);
+        {
+            AsyncInjection::Schedule(async.value().first, async.value().second);
         }
     }
     

@@ -6,7 +6,6 @@ using namespace detail;
 /*********************************static variables*****************************/
 
 thread_local bool ThreadPool::m_running = true;
-thread_local bool ThreadPool::m_paused = false;
 
 /*************************ThreadPool Special Tasks*****************************/
 
@@ -27,7 +26,7 @@ void ThreadPool::PauseThreadTask(ThreadPool& pool)
 {
     std::unique_lock<std::mutex> lock(pool.m_pause_mtx);
     pool.m_pause_sem.release();
-    pool.m_pause_cv.wait(lock, [&pool] {return !pool.m_paused;});
+    pool.m_pause_cv.wait(lock, [&pool] { return !pool.m_paused.load(); });
 }
 
 void ThreadPool::EndThreadTask()
@@ -88,7 +87,7 @@ void ThreadPool::TPTask::Run()
 /*************************ThreadPool functions*********************************/
 
 ThreadPool::ThreadPool(size_t n_threads):
-        m_total_threads(n_threads), m_tid(0), m_pause_sem({0})
+        m_total_threads(n_threads), m_tid(0), m_pause_sem(0), m_paused(false)
 {
     AddThreadsToPool(m_total_threads);
 }
@@ -105,7 +104,7 @@ void ThreadPool::AddTask(std::shared_ptr<ITPTask> s_ptr, Priority pr)
 
 void ThreadPool::Pause()
 {
-    m_paused = true;
+    m_paused.store(true);
     std::function<void(ThreadPool&)> func = PauseThreadTask;
     std::shared_ptr<ITPTask> pause_thread(new FunctionTask<ThreadPool&>(func,
                                                                         *this));
@@ -124,7 +123,7 @@ void ThreadPool::Pause()
 void ThreadPool::Resume()
 {
     std::unique_lock<std::mutex> lock(m_pause_mtx);
-    m_paused = false;
+    m_paused.store(false);
     m_pause_cv.notify_all();
 }
 

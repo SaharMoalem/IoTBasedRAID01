@@ -19,8 +19,10 @@ public:
     void RegisterOpen(ACallback<std::string>* plugin);
     void RegisterClose(ACallback<std::string>* plugin);
     void Run();
+    void Stop();
 
 private:
+    static bool IsSharedObject(const std::string& path);
     void MonitorRun();
     int GetNotifyFD();
     int GetWatchFD();

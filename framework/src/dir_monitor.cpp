@@ -7,6 +7,11 @@
 
 using namespace ilrd;
 
+bool DirMonitor::IsSharedObject(const std::string& path)
+{
+    return path.size() >= 3 && path.compare(path.size() - 3, 3, ".so") == 0;
+}
+
 /*************************Private Functions************************************/
 
 int DirMonitor::GetNotifyFD()
@@ -44,6 +49,11 @@ void DirMonitor::MonitorRun()
 
         if(size == -1)
         {
+            if(!m_running)
+            {
+                return;
+            }
+
             throw std::runtime_error("Error reading events");
         }
 
@@ -57,15 +67,13 @@ void DirMonitor::MonitorRun()
         {
             const inotify_event* event = reinterpret_cast<inotify_event*>(ptr);
 
-            if(event->mask & IN_CLOSE_WRITE)
+            if((event->mask & IN_CLOSE_WRITE) && IsSharedObject(event->name))
             {
-                m_open_dispatcher.Notify(m_dir_name +
-                    std::string(event->name, event->len));
+                m_open_dispatcher.Notify(m_dir_name + event->name);
             }
-            else if(event->mask & IN_DELETE)
+            else if((event->mask & IN_DELETE) && IsSharedObject(event->name))
             {
-                m_close_dispatcher.Notify(m_dir_name +
-                    std::string(event->name, event->len));
+                m_close_dispatcher.Notify(m_dir_name + event->name);
             }
 
             ptr += sizeof(inotify_event) + event->len;
@@ -80,16 +88,29 @@ DirMonitor::DirMonitor(const std::string& path_name): m_dir_name(path_name),
 
 DirMonitor::~DirMonitor()
 {
+    Stop();
+}
+
+void DirMonitor::Stop()
+{
+    if(!m_running && !m_worker.joinable())
+    {
+        return;
+    }
+
     m_running = false;
 
-    inotify_rm_watch(m_notify_fd, m_watchfd);
-    
+    if(m_notify_fd != -1)
+    {
+        inotify_rm_watch(m_notify_fd, m_watchfd);
+        close(m_notify_fd);
+        m_notify_fd = -1;
+    }
+
     if(m_worker.joinable())
     {
         m_worker.join();
     }
-
-    close(m_notify_fd);
 }
 
 void DirMonitor::RegisterOpen(ACallback<std::string>* plugin)

@@ -3,6 +3,7 @@
 
 #include <map>      // map
 #include <thread>   // jthread
+#include <atomic>
 
 #include "waitable_queue.hpp"
 #include "tp_task.hpp"
@@ -67,7 +68,7 @@ private:
     size_t m_total_threads;
     size_t m_tid;
     static thread_local bool m_running;
-    static thread_local bool m_paused;
+    std::atomic<bool> m_paused;
 
     std::mutex m_pause_mtx;
     std::condition_variable m_pause_cv;
