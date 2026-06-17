@@ -5,6 +5,7 @@
 #include <netinet/in.h>
 #include <csignal>
 #include <sys/ioctl.h>
+#include <sys/wait.h>
 
 #include "handleton.hpp"
 #include "logger.hpp"
@@ -51,7 +52,7 @@ uint64_t NBD::Ntohll(uint64_t num)
 #endif
 
 NBD::NBD(const char* device, uint64_t driveSize):
-    m_device(open(device, O_RDWR)), m_driveSize(driveSize)
+    m_device(open(device, O_RDWR)), m_driveSize(driveSize), m_childPid(-1)
 {
     SocketsInit();
     pid_t pid = fork();
@@ -63,9 +64,18 @@ NBD::NBD(const char* device, uint64_t driveSize):
 
     if(!pid)
     {
-        RunClient();
+        try
+        {
+            RunClient();
+            _exit(0);
+        }
+        catch(...)
+        {
+            _exit(1);
+        }
     }
 
+    m_childPid = pid;
     s_nbdDevToDisconnect = m_device.GetFD();
     struct sigaction act;
     act.sa_handler = DisconnectNBD;
@@ -86,6 +96,13 @@ NBD::NBD(const char* device, uint64_t driveSize):
 NBD::~NBD()
 {
     DisconnectNBD(0);
+
+    if(m_childPid > 0)
+    {
+        int status = 0;
+        (void)waitpid(m_childPid, &status, 0);
+        m_childPid = -1;
+    }
 }
 
 void NBD::RunClient()

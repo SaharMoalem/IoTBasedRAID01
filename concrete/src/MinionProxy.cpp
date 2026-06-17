@@ -59,7 +59,21 @@ void MinionProxy::OnMinionFDWakeUp()
 
     {
         std::unique_lock lock(m_mtx);
-        m_socket.ReceiveFrom(buffer, BUFSIZ - 1);
+        const ssize_t bytes = m_socket.ReceiveFrom(buffer, BUFSIZ - 1);
+        if(bytes < static_cast<ssize_t>(sizeof(uint32_t) * 2))
+        {
+            Handleton::GetInstance<Logger>()->Log(
+                "MinionProxy: short UDP packet", Logger::WARNING);
+            return;
+        }
+
+        const uint32_t msgSize = *(uint32_t*)buffer;
+        if(msgSize > static_cast<uint32_t>(bytes))
+        {
+            Handleton::GetInstance<Logger>()->Log(
+                "MinionProxy: UDP packet size mismatch", Logger::WARNING);
+            return;
+        }
     }
     
     char* runner = buffer;

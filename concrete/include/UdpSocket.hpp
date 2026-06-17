@@ -4,23 +4,21 @@
 #include <sys/socket.h> //sockaddr
 #include <string>
 
-//#include "Socket.hpp"
+#include "SocketBase.hpp"
 
 namespace ilrd
 {
-    class UDPSocket//: public Socket
+    class UDPSocket : public SocketBase
     {
         public:
             UDPSocket(const std::string& port, const char* ip_addr = nullptr);
-            ~UDPSocket();
+            ~UDPSocket() override = default;
             void SendTo(const char* message, size_t size);
             //void SendTo(const std::string& message);
-            void ReceiveFrom(char* buffer, size_t size);
+            ssize_t ReceiveFrom(char* buffer, size_t size);
             void EnableBroadcast();
-            int GetFD();
 
         private:
-            int socket_fd;
             sockaddr m_serveraddr;
     };
 }

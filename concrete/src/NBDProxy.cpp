@@ -1,4 +1,3 @@
-#include <iostream>
 #include <arpa/inet.h>
 #include <cerrno>
 #include <cstring>
@@ -36,11 +35,10 @@ std::shared_ptr<ITaskArgs> NBDProxy::GetTaskArgs(int fd, FDMODE mode)
         m_nbd.GetTCPSocket().Receive(buffer, sizeof(nbd_request));
     }
 
-    const nbd_request request = *(nbd_request*)buffer;
+    nbd_request request{};
+    std::memcpy(&request, buffer, sizeof(request));
     uint32_t length = ntohl(request.len);
     uint64_t offset = NBD::Ntohll(request.from);
-
-    std::cout << length << " " << offset << std::endl;
     std::shared_ptr<char[]> data = nullptr;
 
     if(request.magic != htonl(NBD_REQUEST_MAGIC))
@@ -48,7 +46,8 @@ std::shared_ptr<ITaskArgs> NBDProxy::GetTaskArgs(int fd, FDMODE mode)
         throw std::runtime_error("NBD_REQUEST_MAGIC failed");
     }
 
-    switch(ntohl(request.type))
+    const uint32_t type = ntohl(request.type);
+    switch(type)
     {
         case NBD_CMD_READ:
             break;
@@ -62,6 +61,13 @@ std::shared_ptr<ITaskArgs> NBDProxy::GetTaskArgs(int fd, FDMODE mode)
             }
 
             break;
+
+        case NBD_CMD_DISC:
+        case NBD_CMD_FLUSH:
+        case NBD_CMD_TRIM:
+            Handleton::GetInstance<Logger>()->Log(
+                "NBDProxy: received non-RW command", Logger::WARNING);
+            return nullptr;
 
         default:
             throw std::runtime_error("Unknown request");

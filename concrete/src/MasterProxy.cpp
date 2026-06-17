@@ -40,7 +40,21 @@ std::shared_ptr<ITaskArgs> MasterProxy::GetTaskArgs(int fd, FDMODE mode)
 
     {
         std::unique_lock lock(m_mtx);
-        m_socket.value().ReceiveFrom(buffer, BUFSIZ - 1);
+        const ssize_t bytes = m_socket.value().ReceiveFrom(buffer, BUFSIZ - 1);
+        if(bytes < static_cast<ssize_t>(sizeof(uint32_t) * 2))
+        {
+            Handleton::GetInstance<Logger>()->Log(
+                "MasterProxy: short UDP packet", Logger::WARNING);
+            return nullptr;
+        }
+
+        const uint32_t msgSize = *(uint32_t*)buffer;
+        if(msgSize > static_cast<uint32_t>(bytes))
+        {
+            Handleton::GetInstance<Logger>()->Log(
+                "MasterProxy: UDP packet size mismatch", Logger::WARNING);
+            return nullptr;
+        }
     }
 
     char* runner = buffer;

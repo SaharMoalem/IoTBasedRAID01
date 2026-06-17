@@ -1,4 +1,5 @@
 #include <cstring>      //memset
+#include <cerrno>
 #include <netdb.h>      //addrinfo, AI_PASSIVE, getaddrinfo, freeaddrinfo
 #include <unistd.h>     //close
 #include <iostream>     // string, runtime_error
@@ -8,6 +9,7 @@
 using namespace std;
 
 ilrd::TCPClient::TCPClient(const string& other_port, const string& other_ip)
+: SocketBase(-1)
 {
     addrinfo addr, *servinfo;
 
@@ -21,26 +23,24 @@ ilrd::TCPClient::TCPClient(const string& other_port, const string& other_ip)
         throw runtime_error("failed to getaddrinfo\n");
     }
 
-    if((socket_fd = socket(servinfo->ai_family, servinfo->ai_socktype,
-                                                servinfo->ai_protocol)) == -1)
+    int fd = socket(servinfo->ai_family, servinfo->ai_socktype,
+                                                servinfo->ai_protocol);
+    if(fd == -1)
     {
         throw runtime_error("failed to socket\n");
     }
 
-    if(connect(socket_fd, servinfo->ai_addr, servinfo->ai_addrlen) == -1)
+    if(connect(fd, servinfo->ai_addr, servinfo->ai_addrlen) == -1)
     {
+        close(fd);
         throw runtime_error("failed to connect\n");
     }
 
+    Reset(fd);
     freeaddrinfo(servinfo);
 }
 
-ilrd::TCPClient::TCPClient(int fd): socket_fd(fd) {}
-
-ilrd::TCPClient::~TCPClient()
-{
-    close(socket_fd);
-}
+ilrd::TCPClient::TCPClient(int fd): SocketBase(fd) {}
 
 void ilrd::TCPClient::Send(const char* buffer, size_t size)
 {
@@ -48,7 +48,7 @@ void ilrd::TCPClient::Send(const char* buffer, size_t size)
 
     while(size > 0)
     {
-        numbytes = send(socket_fd, buffer, size, 0);
+        numbytes = send(GetFD(), buffer, size, 0);
 
         if(numbytes <= 0)
         {
@@ -66,10 +66,19 @@ ssize_t ilrd::TCPClient::Receive(char* buffer, size_t size)
 
     while(size > 0)
     {
-        numbytes = recv(socket_fd, buffer, size, 0);
+        numbytes = recv(GetFD(), buffer, size, 0);
+
+        if(numbytes == 0)
+        {
+            throw std::runtime_error("disconnected while receiving\n");
+        }
 
         if(numbytes == -1)
         {
+            if(errno == EINTR)
+            {
+                continue;
+            }
             throw std::runtime_error("failed to receive\n");
         }
 
@@ -78,9 +87,4 @@ ssize_t ilrd::TCPClient::Receive(char* buffer, size_t size)
     }
 
     return size;
-}
-
-int ilrd::TCPClient::GetFD()
-{
-    return socket_fd;
 }

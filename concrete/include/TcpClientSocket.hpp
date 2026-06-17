@@ -4,22 +4,20 @@
 #include <string>
 #include <sys/types.h>
 
+#include "SocketBase.hpp"
+
 namespace ilrd
 {
-    class TCPClient//: public Socket
+    class TCPClient : public SocketBase
     {
         public:
             TCPClient(const std::string& other_port,
                                                 const std::string& other_ip);
             explicit TCPClient(int fd);
-            ~TCPClient();
+            ~TCPClient() override = default;
 
             void Send(const char* buffer, size_t size);
             ssize_t Receive(char* buffer, size_t size);
-            int GetFD();
-
-        private:
-            int socket_fd;
     };
 }
 #endif

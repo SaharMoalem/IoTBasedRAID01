@@ -2,6 +2,7 @@
 #define ILRD_RD1645_NBD_HPP
 
 #include <cstdint>
+#include <sys/types.h>
 #include <optional>
 
 #include "TcpClientSocket.hpp"
@@ -38,6 +39,7 @@ private:
     std::optional<FDWrapper> m_clientSocket;
     std::optional<TCPClient> m_serverSocket;
     uint64_t m_driveSize;
+    pid_t m_childPid;
     static int s_nbdDevToDisconnect;
 };
 }

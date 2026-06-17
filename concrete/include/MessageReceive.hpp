@@ -1,6 +1,8 @@
 #ifndef  ILRD_RD1645_MESSAGERECEIVE_HPP
 #define  ILRD_RD1645_MESSAGERECEIVE_HPP
 
+#include <cstdint>
+
 #include "AMessage.hpp"
 
 namespace ilrd
@@ -22,7 +24,7 @@ public:
     std::shared_ptr<char[]> GetData() const override;
 
 private:
-    bool m_result;
+    uint8_t m_result;
     size_t m_length;
     std::shared_ptr<char[]> m_buffer;
 };
@@ -41,7 +43,7 @@ public:
     bool GetResult() const override;
 
 private:
-    bool m_result;
+    uint8_t m_result;
 };
 }
 

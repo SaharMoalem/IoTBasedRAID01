@@ -1,10 +1,9 @@
-#include <iostream>
-
 #include "Framework.hpp"
 #include "handleton.hpp"
 #include "factory.hpp"
 #include "thread_pool.hpp"
 #include "FW_TPTask.hpp"
+#include "logger.hpp"
 
 using namespace ilrd;
 
@@ -23,7 +22,9 @@ Framework::Framework(const Fd_Callbacks& fd_callbacks, const Creators& creators,
                 
                 if(pTaskArgs.get() == nullptr)
                 {
-                    throw std::runtime_error("failed to get args.");
+                    Handleton::GetInstance<Logger>()->Log(
+                        "Framework: failed to get task args", Logger::WARNING);
+                    return;
                 }
 
                 std::shared_ptr<FW_TPTask> fw_task = std::make_shared<FW_TPTask>(pTaskArgs);
