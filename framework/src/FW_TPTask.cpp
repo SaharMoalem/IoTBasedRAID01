@@ -2,6 +2,7 @@
 #include "ICommand.hpp"
 #include "handleton.hpp"
 #include "factory.hpp"
+#include "logger.hpp"
 
 using namespace ilrd;
 
@@ -22,8 +23,14 @@ void FW_TPTask::Run()
         }
     }
     
+    catch(const std::exception& e)
+    {
+        Handleton::GetInstance<Logger>()->Log(
+            std::string("FW_TPTask: ") + e.what(), Logger::ERROR);
+    }
     catch(...)
     {
-        
+        Handleton::GetInstance<Logger>()->Log(
+            "FW_TPTask: unknown exception", Logger::ERROR);
     }
 }

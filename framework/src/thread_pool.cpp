@@ -95,7 +95,7 @@ ThreadPool::ThreadPool(size_t n_threads):
 
 ThreadPool::~ThreadPool()
 {
-    RemoveThreadsFromPool(m_total_threads, EndPoolRun);
+    RemoveThreadsFromPool(m_total_threads, CRITICAL);
 }
 
 void ThreadPool::AddTask(std::shared_ptr<ITPTask> s_ptr, Priority pr)

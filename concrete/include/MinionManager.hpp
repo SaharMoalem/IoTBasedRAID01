@@ -27,7 +27,10 @@ private:
     MinionManager() = default;
 
     size_t m_MBMinion;
+    size_t m_driveSize;
     std::vector<std::shared_ptr<IMinionProxy>> m_minions;
+
+    void ValidateRange(size_t offset, size_t length) const;
     Dispatcher<std::pair<std::shared_ptr<Ticket>, UID>> m_dispatcher;
     Reactor m_reactor;
     std::jthread m_worker;

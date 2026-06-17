@@ -71,6 +71,14 @@ void MinionProxy::OnMinionFDWakeUp()
     UID uid(receivedMessage->GetUID());
 
     std::unique_lock lock(m_mtx);
-    m_map[uid](receivedMessage);
-    m_map.erase(uid);
+    auto it = m_map.find(uid);
+    if(it == m_map.end())
+    {
+        Handleton::GetInstance<Logger>()->Log("MinionProxy: unknown UID response",
+            Logger::WARNING);
+        return;
+    }
+
+    it->second(receivedMessage);
+    m_map.erase(it);
 }

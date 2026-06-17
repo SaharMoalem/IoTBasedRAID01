@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <stdexcept>
 
 #include "MinionManager.hpp"
 #include "Ticket.hpp"
@@ -14,10 +15,29 @@ MinionManager::~MinionManager()
     m_reactor.Stop();
 }
 
+void MinionManager::ValidateRange(size_t offset, size_t length) const
+{
+    if(offset + length > m_driveSize)
+    {
+        throw std::out_of_range("MinionManager: I/O beyond drive size");
+    }
+}
+
 void MinionManager::Init(size_t mbMinion,
                     const std::vector<std::shared_ptr<IMinionProxy>>& minions)
 {
+    if(minions.empty())
+    {
+        throw std::invalid_argument("MinionManager: minions list is empty");
+    }
+
+    if(mbMinion == 0)
+    {
+        throw std::invalid_argument("MinionManager: chunk size must be > 0");
+    }
+
     m_MBMinion = mbMinion;
+    m_driveSize = minions.size() * mbMinion;
     std::copy(minions.begin(), minions.end(), std::back_inserter(m_minions));
     
     for(auto minion : m_minions)
@@ -47,6 +67,8 @@ void MinionManager::Init(size_t mbMinion,
 
 void MinionManager::AddReadTask(const UID& uid, size_t offset, size_t length)
 {
+    ValidateRange(offset, length);
+
     std::shared_ptr<Ticket> ticket = std::make_shared<Ticket>(uid);
     m_dispatcher.Notify(std::make_pair(ticket, uid));
     
@@ -65,6 +87,8 @@ void MinionManager::AddReadTask(const UID& uid, size_t offset, size_t length)
 void MinionManager::AddWriteTask(const UID& uid, size_t offset, size_t length,
                                         const std::shared_ptr<char[]>& buffer)
 {
+    ValidateRange(offset, length);
+
     std::shared_ptr<Ticket> ticket(std::make_shared<Ticket>(uid));
     m_dispatcher.Notify(std::make_pair(ticket, uid));
 

@@ -1,5 +1,6 @@
 #include <sys/inotify.h>
 #include <stdexcept>        // runtime_error
+#include <string>
 #include <cstring>
 
 #include "dir_monitor.hpp"
@@ -46,23 +47,29 @@ void DirMonitor::MonitorRun()
             throw std::runtime_error("Error reading events");
         }
 
-        inotify_event ie;
-        memcpy(&ie, buffer, sizeof(ie));
-        //char name[ie.len];
-        char* name = new char[ie.len];
-        memcpy(name, buffer + sizeof(ie), ie.len);
-
-        if(ie.mask & IN_CLOSE_WRITE)
+        if(size == 0)
         {
-            m_open_dispatcher.Notify(m_dir_name + name);
+            continue;
         }
 
-        else if(ie.mask & IN_DELETE)
+        char* ptr = buffer;
+        while(ptr < buffer + size)
         {
-            m_close_dispatcher.Notify(m_dir_name + name);
-        }
+            const inotify_event* event = reinterpret_cast<inotify_event*>(ptr);
 
-        delete[] name;
+            if(event->mask & IN_CLOSE_WRITE)
+            {
+                m_open_dispatcher.Notify(m_dir_name +
+                    std::string(event->name, event->len));
+            }
+            else if(event->mask & IN_DELETE)
+            {
+                m_close_dispatcher.Notify(m_dir_name +
+                    std::string(event->name, event->len));
+            }
+
+            ptr += sizeof(inotify_event) + event->len;
+        }
     }
 }
 
@@ -82,7 +89,6 @@ DirMonitor::~DirMonitor()
         m_worker.join();
     }
 
-    close(m_watchfd);
     close(m_notify_fd);
 }
 

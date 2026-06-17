@@ -1,5 +1,6 @@
 #include <iostream>
 #include <arpa/inet.h>
+#include <cerrno>
 #include <cstring>
 
 #include "NBDProxy.hpp"
@@ -93,11 +94,25 @@ void NBDProxy::OnNBDResponse(const std::shared_ptr<TaskResult>& result)
     nbd_reply reply;
 
     std::unique_lock lock(m_mtx);
-    reply = m_responses[result->uid];
-    m_responses.erase(result->uid);
+    auto it = m_responses.find(result->uid);
+    if(it == m_responses.end())
+    {
+        Handleton::GetInstance<Logger>()->Log("NBDProxy: unknown UID response",
+            Logger::WARNING);
+        return;
+    }
+
+    reply = it->second;
+    m_responses.erase(it);
+
+    if(!result->result)
+    {
+        reply.error = htonl(EIO);
+    }
+
     m_nbd.GetTCPSocket().Send((char*)&reply, sizeof(nbd_reply));
 
-    if(result->buffer)
+    if(result->result && result->buffer)
     {
         m_nbd.GetTCPSocket().Send(result->buffer.get(), result->length);
     }

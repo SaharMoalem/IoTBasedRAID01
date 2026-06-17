@@ -1,5 +1,7 @@
 #include "ResponseManager.hpp"
 #include "Response.hpp"
+#include "handleton.hpp"
+#include "logger.hpp"
 
 using namespace ilrd;
 
@@ -39,18 +41,25 @@ void ResponseManager::OnTicketDone(std::shared_ptr<TaskResult> result)
 {
     {
         std::unique_lock lock(m_mtx);
+        auto req_it = m_requests.find(result->uid);
+        if(req_it == m_requests.end())
+        {
+            Handleton::GetInstance<Logger>()->Log(
+                "ResponseManager: unknown UID in OnTicketDone", Logger::WARNING);
+            return;
+        }
+
         if(result->result)
         {
-            m_requests[result->uid]->OnSuccess();
-        }   
-
+            req_it->second->OnSuccess();
+        }
         else
         {
-            m_requests[result->uid]->OnFailure();
+            req_it->second->OnFailure();
         }
 
         m_tickets.erase(result->uid);
-        m_requests.erase(result->uid);
+        m_requests.erase(req_it);
         m_proxy->OnNBDResponse(result);
-    }  
+    }
 }
